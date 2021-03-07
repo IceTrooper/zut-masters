@@ -95,15 +95,15 @@ const char* TranslateOpenCLError(cl_int errorCode)
 	}
 }
 
-const char* source =
-"__kernel void Saxpy(const float a, __global const float* x, __global const float *y, __global float *z, const int N)"
-"{"
-"int gid = get_global_id(0);"
-"	if (gid < N)"
-"	{"
-"		z[gid] = a * x[gid] + y[gid];"
-"	}"
-"}";
+const char* kernelSource =
+	"__kernel void Saxpy(const float a, __global const float* x, __global const float *y, __global float *z, const int N)"
+	"{"
+	"int gid = get_global_id(0);"
+	"	if (gid < N)"
+	"	{"
+	"		z[gid] = a * x[gid] + y[gid];"
+	"	}"
+	"}";
 
 bool CheckPreferredPlatformMatch(cl_platform_id platform, const char* preferredPlatform)
 {
@@ -250,15 +250,11 @@ int Program(int argc, char* argv[])
 	// in which case the platform that is selected is implementation-defined.
 	cl_context_properties contextProperties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platformId, 0 };
 	cl_context context = clCreateContextFromType(contextProperties, CL_DEVICE_TYPE_GPU, NULL, NULL, &err);
-	CHECK_ERROR_ARG(err, "Couldn't create a context, clCreateContextFromType() returned an error!\n", (context == NULL))
+	CHECK_ERROR_ARG(err, "Couldn't create a context, clCreateContextFromType() returned an error!\n", (context == NULL));
 
-		cl_device_id device = NULL;
+	cl_device_id device = NULL;
 	err = clGetContextInfo(context, CL_CONTEXT_DEVICES, sizeof(cl_device_id), &device, NULL);
 	CHECK_ERROR(err, "Error: clGetContextInfo() to get list of devices returned an error!\n");
-
-	//const cl_command_queue_properties properties[] = { CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0 };
-	cl_command_queue commandQueue = clCreateCommandQueue(context, device, (cl_command_queue_properties)CL_QUEUE_PROFILING_ENABLE, &err);
-	CHECK_ERROR_ARG(err, "Error: Couldn't create command queue, clCreateCommandQueue() returned an error!\n", (commandQueue == NULL));
 
 	const int N = 32;
 	size_t nBytes = N * sizeof(float);
@@ -273,13 +269,18 @@ int Program(int argc, char* argv[])
 	cl_mem deviceInX = clCreateBuffer(context, CL_MEM_READ_ONLY, nBytes, NULL, &err);
 	cl_mem deviceInY = clCreateBuffer(context, CL_MEM_READ_ONLY, nBytes, NULL, &err);
 	cl_mem deviceOutZ = clCreateBuffer(context, CL_MEM_WRITE_ONLY, nBytes, NULL, &err);
-	CHECK_ERROR(err, "Error: clCreateBuffer() returned an error!\n")
+	CHECK_ERROR(err, "Error: clCreateBuffer() returned an error!\n");
 
-		err = clEnqueueWriteBuffer(commandQueue, deviceInX, CL_TRUE, 0, nBytes, (void*)hostInputX, 0, NULL, NULL);
+	//const cl_command_queue_properties properties[] = { CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0 };
+	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
+	cl_command_queue commandQueue = clCreateCommandQueue(context, device, properties, &err);
+	CHECK_ERROR_ARG(err, "Error: Couldn't create command queue, clCreateCommandQueue() returned an error!\n", (commandQueue == NULL));
+
+	err = clEnqueueWriteBuffer(commandQueue, deviceInX, CL_TRUE, 0, nBytes, (void*)hostInputX, 0, NULL, NULL);
 	err = clEnqueueWriteBuffer(commandQueue, deviceInY, CL_TRUE, 0, nBytes, (void*)hostInputY, 0, NULL, NULL);
 	CHECK_ERROR(err, "Error: clEnqueueWriteBuffer() returned an error!\n");
 
-	cl_program program = clCreateProgramWithSource(context, 1, (const char**)&source, NULL, &err);
+	cl_program program = clCreateProgramWithSource(context, 1, (const char**)&kernelSource, NULL, &err);
 	CHECK_ERROR(err, "Error: clCreateProgramWithSource() returned an error!\n");
 
 	err = clBuildProgram(program, 1, &device, "", NULL, NULL);
