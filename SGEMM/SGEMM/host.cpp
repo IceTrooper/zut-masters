@@ -4,21 +4,11 @@
 // Use opencl.hpp instead of cl2.hpp to make it clear that it supports all versions of OpenCL
 // #include <CL/cl2.hpp>
 #include <CL/opencl.hpp>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
 
 using namespace std;
-
-string kernelSource = R"CLC(
-	__kernel void Saxpy(const float a, __global const float* x, __global const float* y, __global float* z, const int N)
-	{
-		int gid = get_global_id(0);
-		if (gid < N)
-		{
-			z[gid] = a * x[gid] + y[gid];
-		}
-	}
-)CLC";
 
 bool CheckPreferredPlatformMatch(cl::Platform platform, const string preferredPlatform)
 {
@@ -59,28 +49,37 @@ cl::Platform FindOpenCLPlatform()
 	throw runtime_error("Required device was not found on any platform!");
 }
 
-void FillOrdered(cl_float* floatArray, cl_uint n, float start, float step)
+void FillOrdered(cl_float* matrix, cl_uint n, cl_uint m, float start, float step)
 {
 	for (int i = 0; i < n; i++)
 	{
-		floatArray[i] = start + i * step;
+		for (int j = 0; i < m; j++)
+		{
+			matrix[i, j] = start + (i * m + j) * step;
+		}
 	}
 }
 
-void FillRandom(cl_float* floatArray, cl_uint n)
+void FillRandom(cl_float* matrix, cl_uint n, cl_uint m)
 {
 	srand(12345);
 	for (int i = 0; i < n; i++)
 	{
-		floatArray[i] = rand();
+		for (int j = 0; j < m; j++)
+		{
+			matrix[i, j] = rand();
+		}
 	}
 }
 
-void FillEmpty(cl_float* floatArray, cl_uint n)
+void FillEmpty(cl_float* matrix, cl_uint n, cl_uint m)
 {
 	for (int i = 0; i < n; i++)
 	{
-		floatArray[i] = 0.0f;
+		for (int j = 0; j < m; j++)
+		{
+			matrix[i, j] = 0.0f;
+		}
 	}
 }
 
@@ -93,50 +92,77 @@ int Program(int argc, char* argv[])
 	vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 	cl::Device device = devices[0];
 
-	const int N = 32;
-	size_t nBytes = N * sizeof(float);
-	const float inputA = 2.5f;
-	float* hostInputX = (float*)malloc(nBytes);
-	float* hostInputY = (float*)malloc(nBytes);
-	float* hostOutZ = (float*)malloc(nBytes);
-	FillOrdered(hostInputX, N, 1.0f, 1.0f);
-	FillOrdered(hostInputY, N, 1.0f, 2.0f);
-	FillEmpty(hostOutZ, N);
+	const cl_uint threadBlockSize = 32;
+	const cl_uint M = 4096;
+	const cl_uint K = 2048;
+	const cl_uint N = 4096;
 
-	cl::Buffer deviceInX(context, CL_MEM_READ_ONLY, nBytes);
-	cl::Buffer deviceInY(context, CL_MEM_READ_ONLY, nBytes);
-	cl::Buffer deviceOutZ(context, CL_MEM_WRITE_ONLY, nBytes);
+	cl_float* A = new cl_float[M * K];
+	cl_float* B = new cl_float[K * N];
+	cl_float* C = new cl_float[M * N];
+	FillOrdered(A, M, K, 1.0f, 1.0f);
+	FillOrdered(B, K, N, 1.0f, 2.0f);
+	FillEmpty(C, M, N);
+
+	//const int N = 32;
+	//size_t nBytes = N * sizeof(float);
+	//const float inputA = 2.5f;
+	//float* hostInputX = (float*)malloc(nBytes);
+	//float* hostInputY = (float*)malloc(nBytes);
+	//float* hostOutZ = (float*)malloc(nBytes);
+	//FillOrdered(hostInputX, N, 1.0f, 1.0f);
+	//FillOrdered(hostInputY, N, 1.0f, 2.0f);
+	//FillEmpty(hostOutZ, N);
+
+	cl::Buffer bufferA(context, CL_MEM_READ_ONLY, sizeof(A));
+	cl::Buffer bufferB(context, CL_MEM_READ_ONLY, sizeof(B));
+	cl::Buffer bufferC(context, CL_MEM_WRITE_ONLY, sizeof(C));
 
 	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
 	cl::CommandQueue commandQueue(context, device, properties);
 
-	commandQueue.enqueueWriteBuffer(deviceInX, true, 0, nBytes, (void*)hostInputX);
-	commandQueue.enqueueWriteBuffer(deviceInY, true, 0, nBytes, (void*)hostInputY);
+	commandQueue.enqueueWriteBuffer(bufferA, true, 0, sizeof(A), (void*)A);
+	commandQueue.enqueueWriteBuffer(bufferB, true, 0, sizeof(B), (void*)B);
 
+	// Read source file
+	ifstream sourceFile("SGEMM.cl");
+	string kernelSource(
+		istreambuf_iterator<char>(sourceFile),
+		(istreambuf_iterator<char>()));
 	cl::Program::Sources source{ kernelSource };
 	cl::Program program = cl::Program(context, source);
 	// Build binary version of program.
 	program.build(device);
 
-	cl::Kernel kernel(program, "Saxpy");
+	cl::Kernel kernel(program, "Sgemm");
 
-	kernel.setArg(0, inputA);
-	kernel.setArg(1, deviceInX);
-	kernel.setArg(2, deviceInY);
-	kernel.setArg(3, deviceOutZ);
-	kernel.setArg(4, sizeof(int), &N);
+	kernel.setArg(0, M);
+	kernel.setArg(1, K);
+	kernel.setArg(2, N);
+	kernel.setArg(3, bufferA);
+	kernel.setArg(4, bufferB);
+	kernel.setArg(5, bufferC);
+	kernel.setArg(6, threadBlockSize);
 
+	cl::NDRange global = cl::NDRange(M, N);
+	cl::NDRange local = cl::NDRange(threadBlockSize, threadBlockSize);
 	cl::Event event;
-	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(N, 1), cl::NullRange, NULL, &event);
+	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &event);
 	event.wait();
 
-	commandQueue.enqueueReadBuffer(deviceOutZ, true, 0, nBytes, (void*)hostOutZ);
-	for (int i = 0; i < N; i++)
+	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeof(C), (void*)C);
+	for (int i = 0; i < M; i++)
 	{
-		cout << hostOutZ[i] << " ";
+		for (int j = 0; j < N; j++)
+		{
+			cout << C[M, N];
+		}
 	}
 	cout << endl;
 
+	delete[] A;
+	delete[] B;
+	delete[] C;
 	return 0;
 }
 
@@ -146,7 +172,7 @@ int main(int argc, char* argv[])
 	{
 		Program(argc, argv);
 	}
-	catch(cl::Error e)
+	catch (cl::Error e)
 	{
 		cout << "Returned code (" << e.err() << "): " << e.what() << "\n";
 		return e.err();

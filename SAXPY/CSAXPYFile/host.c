@@ -95,16 +95,6 @@ const char* TranslateOpenCLError(cl_int errorCode)
 	}
 }
 
-const char* kernelSource =
-	"__kernel void Saxpy(const float a, __global const float* x, __global const float *y, __global float *z, const int N)"
-	"{"
-	"int gid = get_global_id(0);"
-	"	if (gid < N)"
-	"	{"
-	"		z[gid] = a * x[gid] + y[gid];"
-	"	}"
-	"}";
-
 bool CheckPreferredPlatformMatch(cl_platform_id platform, const char* preferredPlatform)
 {
 	size_t stringLength = 0;
@@ -208,6 +198,35 @@ cl_platform_id FindOpenCLPlatform()
 	return NULL;
 }
 
+int ReadSourceFromFile(const char* fileName, char** source, size_t* sourceSize)
+{
+	int errorCode = CL_SUCCESS;
+
+	FILE* fp = NULL;
+	fopen_s(&fp, fileName, "rb");
+	if (fp == NULL)
+	{
+		printf("Error: Couldn't find program source file '%s'!\n", fileName);
+		errorCode = CL_INVALID_VALUE;
+	}
+	else {
+		fseek(fp, 0, SEEK_END);
+		*sourceSize = ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+
+		*source = (char*)malloc(*sourceSize);//new char[*sourceSize];
+		if (*source == NULL)
+		{
+			printf("Error: Couldn't allocate %d bytes for program source from file '%s'!\n", *sourceSize, fileName);
+			errorCode = CL_OUT_OF_HOST_MEMORY;
+		}
+		else {
+			fread(*source, 1, *sourceSize, fp);
+		}
+	}
+	return errorCode;
+}
+
 void FillOrdered(cl_float* floatArray, cl_uint n, float start, float step)
 {
 	for (int i = 0; i < n; i++)
@@ -283,7 +302,11 @@ int Program(int argc, char* argv[])
 	err = clEnqueueWriteBuffer(commandQueue, deviceInY, CL_TRUE, 0, nBytes, (void*)hostInputY, 0, NULL, NULL);
 	CHECK_ERROR(err, "Error: clEnqueueWriteBuffer() returned an error!\n");
 
-	cl_program program = clCreateProgramWithSource(context, 1, (const char**)&kernelSource, NULL, &err);
+	char* kernelSource = NULL;
+	size_t sourceSize = 0;
+	err = ReadSourceFromFile("SAXPY.cl", &kernelSource, &sourceSize);
+	CHECK_ERROR(err, "Error: ReadSourceFromFile returned an error!\n");
+	cl_program program = clCreateProgramWithSource(context, 1, (const char**)&kernelSource, &sourceSize, &err);
 	CHECK_ERROR(err, "Error: clCreateProgramWithSource() returned an error!\n");
 
 	// In fourth parameter you can pass preprocessor options.
@@ -323,16 +346,11 @@ int Program(int argc, char* argv[])
 	}
 	printf("\n");
 
-	// Clean-up OpenCL objects.
-	clReleaseCommandQueue(commandQueue);
-	clReleaseContext(context);
-	clReleaseProgram(program);
-	clReleaseKernel(kernel);
-
 	// Free allocated memory
 	free((void*)hostInputX);
 	free((void*)hostInputY);
 	free((void*)hostOutZ);
+	free((void*)kernelSource);
 	return 0;
 }
 

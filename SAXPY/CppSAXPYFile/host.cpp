@@ -4,21 +4,11 @@
 // Use opencl.hpp instead of cl2.hpp to make it clear that it supports all versions of OpenCL
 // #include <CL/cl2.hpp>
 #include <CL/opencl.hpp>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
 
 using namespace std;
-
-string kernelSource = R"CLC(
-	__kernel void Saxpy(const float a, __global const float* x, __global const float* y, __global float* z, const int N)
-	{
-		int gid = get_global_id(0);
-		if (gid < N)
-		{
-			z[gid] = a * x[gid] + y[gid];
-		}
-	}
-)CLC";
 
 bool CheckPreferredPlatformMatch(cl::Platform platform, const string preferredPlatform)
 {
@@ -113,6 +103,11 @@ int Program(int argc, char* argv[])
 	commandQueue.enqueueWriteBuffer(deviceInX, true, 0, nBytes, (void*)hostInputX);
 	commandQueue.enqueueWriteBuffer(deviceInY, true, 0, nBytes, (void*)hostInputY);
 
+	// Read source file
+	ifstream sourceFile("SAXPY.cl");
+	string kernelSource(
+		istreambuf_iterator<char>(sourceFile),
+		(istreambuf_iterator<char>()));
 	cl::Program::Sources source{ kernelSource };
 	cl::Program program = cl::Program(context, source);
 	// Build binary version of program.
@@ -146,7 +141,7 @@ int main(int argc, char* argv[])
 	{
 		Program(argc, argv);
 	}
-	catch(cl::Error e)
+	catch (cl::Error e)
 	{
 		cout << "Returned code (" << e.err() << "): " << e.what() << "\n";
 		return e.err();
