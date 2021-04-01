@@ -53,9 +53,10 @@ void FillOrdered(cl_float* matrix, cl_uint n, cl_uint m, float start, float step
 {
 	for (int i = 0; i < n; i++)
 	{
-		for (int j = 0; i < m; j++)
+		for (int j = 0; j < m; j++)
 		{
-			matrix[i, j] = start + (i * m + j) * step;
+			matrix[i * m + j] = start + (i * m + j) * step;
+			//matrix[i, j] = start + (i * m + j) * step;
 		}
 	}
 }
@@ -67,7 +68,7 @@ void FillRandom(cl_float* matrix, cl_uint n, cl_uint m)
 	{
 		for (int j = 0; j < m; j++)
 		{
-			matrix[i, j] = rand();
+			matrix[i * m + j] = rand();
 		}
 	}
 }
@@ -78,7 +79,26 @@ void FillEmpty(cl_float* matrix, cl_uint n, cl_uint m)
 	{
 		for (int j = 0; j < m; j++)
 		{
-			matrix[i, j] = 0.0f;
+			matrix[i * m + j] = 0.0f;
+		}
+	}
+}
+
+void SgemmNaive(const int nDim, const int mDim, const int kDim, const float* A, const float* B, float* C)
+{
+	int i, j, k;
+	float acc;
+
+	for (i = 0; i < nDim; i++)
+	{
+		for (j = 0; j < mDim; j++)
+		{
+			acc = 0.0f;
+			for (k = 0; k < kDim; k++)
+			{
+				acc += *(A + (i * nDim + k)) + *(B + (k * kDim + j));
+			}
+			*(C + (i * nDim + j)) = acc;
 		}
 	}
 }
@@ -92,17 +112,17 @@ int Program(int argc, char* argv[])
 	vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 	cl::Device device = devices[0];
 
-	const cl_uint threadBlockSize = 32;
-	const cl_uint M = 4096;
-	const cl_uint K = 2048;
-	const cl_uint N = 4096;
+	//const cl_uint threadBlockSize = 32;
+	const cl_uint nDim = 16;//1024;
+	const cl_uint kDim = 32;//2048;
+	const cl_uint mDim = 64;//4096;
 
-	cl_float* A = new cl_float[M * K];
-	cl_float* B = new cl_float[K * N];
-	cl_float* C = new cl_float[M * N];
-	FillOrdered(A, M, K, 1.0f, 1.0f);
-	FillOrdered(B, K, N, 1.0f, 2.0f);
-	FillEmpty(C, M, N);
+	cl_float* A = new cl_float[nDim * kDim];
+	cl_float* B = new cl_float[kDim * mDim];
+	cl_float* C = new cl_float[nDim * mDim];
+	FillOrdered(A, nDim, kDim, 1.0f, 1.0f);
+	FillOrdered(B, kDim, mDim, 1.0f, 2.0f);
+	FillEmpty(C, nDim, mDim);
 
 	//const int N = 32;
 	//size_t nBytes = N * sizeof(float);
@@ -125,7 +145,7 @@ int Program(int argc, char* argv[])
 	commandQueue.enqueueWriteBuffer(bufferB, true, 0, sizeof(B), (void*)B);
 
 	// Read source file
-	ifstream sourceFile("SGEMM.cl");
+	ifstream sourceFile("SGEMM_naive.cl");
 	string kernelSource(
 		istreambuf_iterator<char>(sourceFile),
 		(istreambuf_iterator<char>()));
@@ -136,33 +156,46 @@ int Program(int argc, char* argv[])
 
 	cl::Kernel kernel(program, "Sgemm");
 
-	kernel.setArg(0, M);
-	kernel.setArg(1, K);
-	kernel.setArg(2, N);
+	kernel.setArg(0, nDim);
+	kernel.setArg(1, kDim);
+	kernel.setArg(2, nDim);
 	kernel.setArg(3, bufferA);
 	kernel.setArg(4, bufferB);
 	kernel.setArg(5, bufferC);
-	kernel.setArg(6, threadBlockSize);
+	//kernel.setArg(6, threadBlockSize);
 
-	cl::NDRange global = cl::NDRange(M, N);
-	cl::NDRange local = cl::NDRange(threadBlockSize, threadBlockSize);
-	cl::Event event;
-	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &event);
-	event.wait();
+	//cl::NDRange global = cl::NDRange(nDim, mDim);
+	//cl::NDRange local = cl::NDRange(threadBlockSize, threadBlockSize);
+	cl::NDRange global = cl::NDRange(nDim, mDim);
+	cl::Event clEvent;
+	//commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &event);
+	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, cl::NullRange, NULL, &clEvent);
+	clEvent.wait();
+
+	cl_ulong startTime = clEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+	cl_ulong endTime = clEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+	cl_ulong elapsed = endTime - startTime;
+
+	cout << "\n\nTime elapsed: " << elapsed << "\n";
 
 	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeof(C), (void*)C);
-	for (int i = 0; i < M; i++)
+	for (int i = 0; i < nDim; i++)
 	{
-		for (int j = 0; j < N; j++)
+		for (int j = 0; j < mDim; j++)
 		{
-			cout << C[M, N];
+			cout << C[i * mDim + j] << " ";
 		}
+		cout << "\n";
 	}
 	cout << endl;
+
+	cout << "\nCheck:\n";
+	// write more kernels in one file
 
 	delete[] A;
 	delete[] B;
 	delete[] C;
+
 	return 0;
 }
 

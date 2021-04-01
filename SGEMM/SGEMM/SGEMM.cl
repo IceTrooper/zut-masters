@@ -1,6 +1,6 @@
 // Multiplication of A (m x k) by B (k x n)
 __kernel void Sgemm(const int M, const int K, const int N, const __global float* A,  const __global float* B, __global float* C, const int threadBlockSize) {
-        
+       /* 
     // Thread identifiers
     const int row = get_local_id(0); // Local row ID (max: threadBlockSize)
     const int col = get_local_id(1); // Local col ID (max: threadBlockSize)
@@ -38,4 +38,5 @@ __kernel void Sgemm(const int M, const int K, const int N, const __global float*
      
     // Store the final result in C
     C[globalCol*M + globalRow] = acc;
+    */
 }
