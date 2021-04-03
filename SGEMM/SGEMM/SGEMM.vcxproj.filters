@@ -23,8 +23,5 @@
     <Intel_OpenCL_Build_Rules Include="SGEMM.cl">
       <Filter>OpenCL Files</Filter>
     </Intel_OpenCL_Build_Rules>
-    <Intel_OpenCL_Build_Rules Include="SGEMM_naive.cl">
-      <Filter>OpenCL Files</Filter>
-    </Intel_OpenCL_Build_Rules>
   </ItemGroup>
 </Project>

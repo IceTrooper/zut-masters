@@ -8,6 +8,9 @@
 #include <iostream>
 #include <iomanip>
 
+#define PRINT_MATRICES false
+#define COMPUTE_HOST false
+
 using namespace std;
 
 bool CheckPreferredPlatformMatch(cl::Platform platform, const string preferredPlatform)
@@ -41,7 +44,7 @@ cl::Platform FindOpenCLPlatform()
 		if (devices.size() != 0)
 		{
 			cout << "Required device was found.\n";
-			cout << "Number of available devices: " << devices.size();
+			cout << "Number of available devices: " << devices.size() << "\n";
 
 			return platform;
 		}
@@ -96,11 +99,79 @@ void SgemmNaive(const int nDim, const int mDim, const int kDim, const float* A, 
 			acc = 0.0f;
 			for (k = 0; k < kDim; k++)
 			{
-				acc += *(A + (i * nDim + k)) + *(B + (k * kDim + j));
+				acc += *(A + (i * kDim + k)) * *(B + (k * mDim + j));
 			}
-			*(C + (i * nDim + j)) = acc;
+			*(C + (i * mDim + j)) = acc;
 		}
 	}
+}
+
+void PrintMatrix(const float* matrix, const int nDim, const int mDim)
+{
+	for (int i = 0; i < nDim; i++)
+	{
+		for (int j = 0; j < mDim; j++)
+		{
+			cout << matrix[i * mDim + j] << " ";
+		}
+		cout << "\n";
+	}
+	cout << endl;
+}
+
+void Profile(cl::Event& clEvent)
+{
+	cl_ulong startTime = clEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+	cl_ulong endTime = clEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+	cl_ulong elapsed = endTime - startTime;
+	cout << "Time elapsed: " << elapsed << " ns\n";
+}
+
+void KernelSgemmNaive(cl::Program& program, cl::CommandQueue& commandQueue,
+	const cl_uint nDim, const cl_uint kDim, const cl_uint mDim,
+	cl::Buffer& bufferA, cl::Buffer& bufferB, cl::Buffer& bufferC)
+{
+	cl::Kernel kernel(program, "Sgemm_naive");
+
+	kernel.setArg(0, sizeof(cl_uint), &nDim);
+	kernel.setArg(1, sizeof(cl_uint), &kDim);
+	kernel.setArg(2, sizeof(cl_uint), &mDim);
+	kernel.setArg(3, bufferA);
+	kernel.setArg(4, bufferB);
+	kernel.setArg(5, bufferC);
+
+	cl::NDRange global = cl::NDRange(nDim, mDim);
+	cl::Event clEvent;
+
+	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, cl::NullRange, NULL, &clEvent);
+	clEvent.wait();
+
+	Profile(clEvent);
+}
+
+void KernelSgemmComputeUnits(cl::Device& device, cl::Program& program, cl::CommandQueue& commandQueue,
+	const cl_uint nDim, const cl_uint kDim, const cl_uint mDim,
+	cl::Buffer& bufferA, cl::Buffer& bufferB, cl::Buffer& bufferC)
+{
+	cl_uint maxComputeUnits = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+
+	cl::Kernel kernel(program, "Sgemm_compute_units");
+
+	kernel.setArg(0, sizeof(cl_uint), &nDim);
+	kernel.setArg(1, sizeof(cl_uint), &kDim);
+	kernel.setArg(2, sizeof(cl_uint), &mDim);
+	kernel.setArg(3, bufferA);
+	kernel.setArg(4, bufferB);
+	kernel.setArg(5, bufferC);
+
+	cl::NDRange global = cl::NDRange(nDim, 1);
+	cl::NDRange local = cl::NDRange(nDim/4, 1);
+	cl::Event clEvent;
+
+	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &clEvent);
+	clEvent.wait();
+
+	Profile(clEvent);
 }
 
 int Program(int argc, char* argv[])
@@ -112,40 +183,55 @@ int Program(int argc, char* argv[])
 	vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 	cl::Device device = devices[0];
 
-	//const cl_uint threadBlockSize = 32;
-	const cl_uint nDim = 16;//1024;
-	const cl_uint kDim = 32;//2048;
-	const cl_uint mDim = 64;//4096;
+	cout << "\n";
+	const cl_uint nDim = 1024;
+	const cl_uint kDim = 2048;
+	const cl_uint mDim = 4096;
 
 	cl_float* A = new cl_float[nDim * kDim];
 	cl_float* B = new cl_float[kDim * mDim];
 	cl_float* C = new cl_float[nDim * mDim];
+	size_t sizeA = nDim * kDim * sizeof(float);
+	size_t sizeB = kDim * mDim * sizeof(float);
+	size_t sizeC = nDim * mDim * sizeof(float);
+
 	FillOrdered(A, nDim, kDim, 1.0f, 1.0f);
-	FillOrdered(B, kDim, mDim, 1.0f, 2.0f);
+	FillOrdered(B, kDim, mDim, 2.0f, 2.0f);
 	FillEmpty(C, nDim, mDim);
 
-	//const int N = 32;
-	//size_t nBytes = N * sizeof(float);
-	//const float inputA = 2.5f;
-	//float* hostInputX = (float*)malloc(nBytes);
-	//float* hostInputY = (float*)malloc(nBytes);
-	//float* hostOutZ = (float*)malloc(nBytes);
-	//FillOrdered(hostInputX, N, 1.0f, 1.0f);
-	//FillOrdered(hostInputY, N, 1.0f, 2.0f);
-	//FillEmpty(hostOutZ, N);
+	// Printing matrices to test out.
+	if (PRINT_MATRICES)
+	{
+		PrintMatrix(A, nDim, kDim);
+		PrintMatrix(B, kDim, mDim);
+		PrintMatrix(C, nDim, mDim);
+	}
 
-	cl::Buffer bufferA(context, CL_MEM_READ_ONLY, sizeof(A));
-	cl::Buffer bufferB(context, CL_MEM_READ_ONLY, sizeof(B));
-	cl::Buffer bufferC(context, CL_MEM_WRITE_ONLY, sizeof(C));
+	// Host multiplication
+	if (COMPUTE_HOST)
+	{
+		cl_float* hostC = new cl_float[nDim * mDim];
+		//FillEmpty(hostC, nDim, mDim);
+		std::memcpy(hostC, C, sizeC);
+		cout << "Naive host matrix multiplication:\n";
+		SgemmNaive(nDim, mDim, kDim, A, B, hostC);
+		PrintMatrix(hostC, nDim, mDim);
+	}
+
+	cout << "Kernel matrix multiplication:\n";
+
+	cl::Buffer bufferA(context, CL_MEM_READ_ONLY, sizeA);
+	cl::Buffer bufferB(context, CL_MEM_READ_ONLY, sizeB);
+	cl::Buffer bufferC(context, CL_MEM_WRITE_ONLY, sizeC);
 
 	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
 	cl::CommandQueue commandQueue(context, device, properties);
 
-	commandQueue.enqueueWriteBuffer(bufferA, true, 0, sizeof(A), (void*)A);
-	commandQueue.enqueueWriteBuffer(bufferB, true, 0, sizeof(B), (void*)B);
+	commandQueue.enqueueWriteBuffer(bufferA, true, 0, sizeA, (void*)A);
+	commandQueue.enqueueWriteBuffer(bufferB, true, 0, sizeB, (void*)B);
 
 	// Read source file
-	ifstream sourceFile("SGEMM_naive.cl");
+	ifstream sourceFile("SGEMM.cl");
 	string kernelSource(
 		istreambuf_iterator<char>(sourceFile),
 		(istreambuf_iterator<char>()));
@@ -154,43 +240,16 @@ int Program(int argc, char* argv[])
 	// Build binary version of program.
 	program.build(device);
 
-	cl::Kernel kernel(program, "Sgemm");
+	// Main kernel program
+	//KernelSgemmNaive(program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
+	KernelSgemmComputeUnits(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
 
-	kernel.setArg(0, nDim);
-	kernel.setArg(1, kDim);
-	kernel.setArg(2, nDim);
-	kernel.setArg(3, bufferA);
-	kernel.setArg(4, bufferB);
-	kernel.setArg(5, bufferC);
-	//kernel.setArg(6, threadBlockSize);
-
-	//cl::NDRange global = cl::NDRange(nDim, mDim);
-	//cl::NDRange local = cl::NDRange(threadBlockSize, threadBlockSize);
-	cl::NDRange global = cl::NDRange(nDim, mDim);
-	cl::Event clEvent;
-	//commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &event);
-	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, cl::NullRange, NULL, &clEvent);
-	clEvent.wait();
-
-	cl_ulong startTime = clEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
-	cl_ulong endTime = clEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
-	cl_ulong elapsed = endTime - startTime;
-
-	cout << "\n\nTime elapsed: " << elapsed << "\n";
-
-	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeof(C), (void*)C);
-	for (int i = 0; i < nDim; i++)
+	// Read and check results
+	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeC, (void*)C);
+	if (PRINT_MATRICES)
 	{
-		for (int j = 0; j < mDim; j++)
-		{
-			cout << C[i * mDim + j] << " ";
-		}
-		cout << "\n";
+		PrintMatrix(C, nDim, mDim);
 	}
-	cout << endl;
-
-	cout << "\nCheck:\n";
-	// write more kernels in one file
 
 	delete[] A;
 	delete[] B;
