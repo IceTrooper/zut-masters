@@ -219,7 +219,7 @@ void KernelSgemmLocal(cl::Device& device, cl::Program& program, cl::CommandQueue
 		throw runtime_error("nDim must be divisible by the CL_DEVICE_MAX_COMPUTE_UNITS without reminder!");
 	}
 
-	cl::Kernel kernel(program, "Sgemm_private");
+	cl::Kernel kernel(program, "Sgemm_local");
 
 	kernel.setArg(0, sizeof(cl_uint), &nDim);
 	kernel.setArg(1, sizeof(cl_uint), &kDim);
@@ -227,7 +227,7 @@ void KernelSgemmLocal(cl::Device& device, cl::Program& program, cl::CommandQueue
 	kernel.setArg(3, bufferA);
 	kernel.setArg(4, bufferB);
 	kernel.setArg(5, bufferC);
-	kernel.setArg(6, mDim * sizeof(float), NULL);
+	kernel.setArg(6, kDim * sizeof(float), NULL);
 
 	cl::NDRange global = cl::NDRange(nDim, 1);
 	cl::NDRange local = cl::NDRange(nDim / maxComputeUnits, 1);
@@ -249,9 +249,9 @@ int Program(int argc, char* argv[])
 	cl::Device device = devices[0];
 
 	cout << "\n";
-	const cl_uint nDim = 1200;
+	const cl_uint nDim = N_DIM;
 	const cl_uint kDim = K_DIM;
-	const cl_uint mDim = 4800;
+	const cl_uint mDim = M_DIM;
 
 	cl_float* A = new cl_float[nDim * kDim];
 	cl_float* B = new cl_float[kDim * mDim];
@@ -308,8 +308,8 @@ int Program(int argc, char* argv[])
 	// Main kernel program
 	//KernelSgemmNaive(program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
 	//KernelSgemmComputeUnits(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
-	KernelSgemmPrivate(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
-	//KernelSgemmLocal(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
+	//KernelSgemmPrivate(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
+	KernelSgemmLocal(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
 
 	// Read and check results
 	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeC, (void*)C);

@@ -95,24 +95,24 @@ __kernel void Sgemm_local(const uint nDim, const uint kDim, const uint mDim,
         {
             privateA[k] = A[i*kDim + k];
         }
-
+        
         for(j = 0; j < mDim; j++)
         {
-            for(k = localK; k < localM; k+=localM)
+            for(k = localK; k < kDim; k+=localM)
             {
                 localB[k] = B[k * kDim + j];
             }
         }
+        
 
-        for(j=0; j<mDim; j++)
+        barrier(CLK_LOCAL_MEM_FENCE);
+        
+        for(k = 0; k < kDim; k++)
         {
-            acc = 0.0f;
-            for(k = 0; k < kDim; k++)
-            {
-                // Now we're getting A values from faster private memory.
-                acc += privateA[k] * B[k*mDim + j];
-            }
-            C[i*mDim + j] = acc;
+            // Now we're getting A values from faster private memory.
+            acc += privateA[k] * localB[k];
         }
+        
+        C[i*mDim + j] = acc;
     }
 }
