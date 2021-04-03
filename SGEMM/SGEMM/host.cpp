@@ -7,9 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
-
-#define PRINT_MATRICES false
-#define COMPUTE_HOST false
+#include "host.h"
 
 using namespace std;
 
@@ -154,6 +152,11 @@ void KernelSgemmComputeUnits(cl::Device& device, cl::Program& program, cl::Comma
 	cl::Buffer& bufferA, cl::Buffer& bufferB, cl::Buffer& bufferC)
 {
 	cl_uint maxComputeUnits = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+	cout << "CL_DEVICE_MAX_COMPUTE_UNITS: " << maxComputeUnits << "\n";
+	if (nDim % maxComputeUnits != 0)
+	{
+		throw runtime_error("nDim must be divisible by the CL_DEVICE_MAX_COMPUTE_UNITS without reminder!");
+	}
 
 	cl::Kernel kernel(program, "Sgemm_compute_units");
 
@@ -165,7 +168,69 @@ void KernelSgemmComputeUnits(cl::Device& device, cl::Program& program, cl::Comma
 	kernel.setArg(5, bufferC);
 
 	cl::NDRange global = cl::NDRange(nDim, 1);
-	cl::NDRange local = cl::NDRange(nDim/4, 1);
+	cl::NDRange local = cl::NDRange(nDim/maxComputeUnits, 1);
+	cl::Event clEvent;
+
+	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &clEvent);
+	clEvent.wait();
+
+	Profile(clEvent);
+}
+
+// This is the same code as KernelSgemmComputeUnits but with different kernel.
+void KernelSgemmPrivate(cl::Device& device, cl::Program& program, cl::CommandQueue& commandQueue,
+	const cl_uint nDim, const cl_uint kDim, const cl_uint mDim,
+	cl::Buffer& bufferA, cl::Buffer& bufferB, cl::Buffer& bufferC)
+{
+	cl_uint maxComputeUnits = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+	cout << "CL_DEVICE_MAX_COMPUTE_UNITS: " << maxComputeUnits << "\n";
+	if (nDim % maxComputeUnits != 0)
+	{
+		throw runtime_error("nDim must be divisible by the CL_DEVICE_MAX_COMPUTE_UNITS without reminder!");
+	}
+
+	cl::Kernel kernel(program, "Sgemm_private");
+
+	kernel.setArg(0, sizeof(cl_uint), &nDim);
+	kernel.setArg(1, sizeof(cl_uint), &kDim);
+	kernel.setArg(2, sizeof(cl_uint), &mDim);
+	kernel.setArg(3, bufferA);
+	kernel.setArg(4, bufferB);
+	kernel.setArg(5, bufferC);
+
+	cl::NDRange global = cl::NDRange(nDim, 1);
+	cl::NDRange local = cl::NDRange(nDim / maxComputeUnits, 1);
+	cl::Event clEvent;
+
+	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &clEvent);
+	clEvent.wait();
+
+	Profile(clEvent);
+}
+
+void KernelSgemmLocal(cl::Device& device, cl::Program& program, cl::CommandQueue& commandQueue,
+	const cl_uint nDim, const cl_uint kDim, const cl_uint mDim,
+	cl::Buffer& bufferA, cl::Buffer& bufferB, cl::Buffer& bufferC)
+{
+	cl_uint maxComputeUnits = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+	cout << "CL_DEVICE_MAX_COMPUTE_UNITS: " << maxComputeUnits << "\n";
+	if (nDim % maxComputeUnits != 0)
+	{
+		throw runtime_error("nDim must be divisible by the CL_DEVICE_MAX_COMPUTE_UNITS without reminder!");
+	}
+
+	cl::Kernel kernel(program, "Sgemm_private");
+
+	kernel.setArg(0, sizeof(cl_uint), &nDim);
+	kernel.setArg(1, sizeof(cl_uint), &kDim);
+	kernel.setArg(2, sizeof(cl_uint), &mDim);
+	kernel.setArg(3, bufferA);
+	kernel.setArg(4, bufferB);
+	kernel.setArg(5, bufferC);
+	kernel.setArg(6, mDim * sizeof(float), NULL);
+
+	cl::NDRange global = cl::NDRange(nDim, 1);
+	cl::NDRange local = cl::NDRange(nDim / maxComputeUnits, 1);
 	cl::Event clEvent;
 
 	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &clEvent);
@@ -184,9 +249,9 @@ int Program(int argc, char* argv[])
 	cl::Device device = devices[0];
 
 	cout << "\n";
-	const cl_uint nDim = 1024;
-	const cl_uint kDim = 2048;
-	const cl_uint mDim = 4096;
+	const cl_uint nDim = 1200;
+	const cl_uint kDim = K_DIM;
+	const cl_uint mDim = 4800;
 
 	cl_float* A = new cl_float[nDim * kDim];
 	cl_float* B = new cl_float[kDim * mDim];
@@ -242,7 +307,9 @@ int Program(int argc, char* argv[])
 
 	// Main kernel program
 	//KernelSgemmNaive(program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
-	KernelSgemmComputeUnits(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
+	//KernelSgemmComputeUnits(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
+	//KernelSgemmPrivate(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
+	KernelSgemmLocal(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
 
 	// Read and check results
 	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeC, (void*)C);

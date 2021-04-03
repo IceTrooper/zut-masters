@@ -192,6 +192,9 @@
       <Device Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">1</Device>
     </Intel_OpenCL_Build_Rules>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="host.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(INTELOCLSDKROOT)\BuildCustomizations\IntelOpenCL.targets" />
