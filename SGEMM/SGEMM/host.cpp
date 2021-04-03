@@ -308,8 +308,8 @@ int Program(int argc, char* argv[])
 	// Main kernel program
 	//KernelSgemmNaive(program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
 	//KernelSgemmComputeUnits(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
-	//KernelSgemmPrivate(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
-	KernelSgemmLocal(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
+	KernelSgemmPrivate(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
+	//KernelSgemmLocal(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
 
 	// Read and check results
 	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeC, (void*)C);

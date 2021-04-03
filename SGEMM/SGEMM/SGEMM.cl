@@ -67,7 +67,7 @@ __kernel void Sgemm_private(const uint nDim, const uint kDim, const uint mDim,
             for(k = 0; k < kDim; k++)
             {
                 // Now we're getting A values from faster private memory.
-                acc += privateA[i*kDim + k] * B[k*mDim + j];
+                acc += privateA[k] * B[k*mDim + j];
             }
             C[i*mDim + j] = acc;
         }
@@ -110,7 +110,7 @@ __kernel void Sgemm_local(const uint nDim, const uint kDim, const uint mDim,
             for(k = 0; k < kDim; k++)
             {
                 // Now we're getting A values from faster private memory.
-                acc += privateA[i*kDim + k] * B[k*mDim + j];
+                acc += privateA[k] * B[k*mDim + j];
             }
             C[i*mDim + j] = acc;
         }
