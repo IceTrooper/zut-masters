@@ -3,7 +3,7 @@
 
 #include "host.h"
 
-__kernel void Sgemm_naive(const uint nDim, const uint kDim, const uint mDim,
+__kernel void Sgemm_simple(const uint nDim, const uint kDim, const uint mDim,
     const __global float* A,  const __global float* B, __global float* C)
 {
     int i = get_global_id(0);

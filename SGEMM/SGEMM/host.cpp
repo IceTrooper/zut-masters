@@ -129,7 +129,7 @@ void KernelSgemmNaive(cl::Program& program, cl::CommandQueue& commandQueue,
 	const cl_uint nDim, const cl_uint kDim, const cl_uint mDim,
 	cl::Buffer& bufferA, cl::Buffer& bufferB, cl::Buffer& bufferC)
 {
-	cl::Kernel kernel(program, "Sgemm_naive");
+	cl::Kernel kernel(program, "Sgemm_simple");
 
 	kernel.setArg(0, sizeof(cl_uint), &nDim);
 	kernel.setArg(1, sizeof(cl_uint), &kDim);
@@ -167,8 +167,8 @@ void KernelSgemmComputeUnits(cl::Device& device, cl::Program& program, cl::Comma
 	kernel.setArg(4, bufferB);
 	kernel.setArg(5, bufferC);
 
-	cl::NDRange global = cl::NDRange(nDim, 1);
-	cl::NDRange local = cl::NDRange(nDim/maxComputeUnits, 1);
+	cl::NDRange global = cl::NDRange(nDim);
+	cl::NDRange local = cl::NDRange(nDim/maxComputeUnits);
 	cl::Event clEvent;
 
 	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &clEvent);
@@ -198,8 +198,8 @@ void KernelSgemmPrivate(cl::Device& device, cl::Program& program, cl::CommandQue
 	kernel.setArg(4, bufferB);
 	kernel.setArg(5, bufferC);
 
-	cl::NDRange global = cl::NDRange(nDim, 1);
-	cl::NDRange local = cl::NDRange(nDim / maxComputeUnits, 1);
+	cl::NDRange global = cl::NDRange(nDim);
+	cl::NDRange local = cl::NDRange(nDim / maxComputeUnits);
 	cl::Event clEvent;
 
 	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &clEvent);
@@ -229,8 +229,8 @@ void KernelSgemmLocal(cl::Device& device, cl::Program& program, cl::CommandQueue
 	kernel.setArg(5, bufferC);
 	kernel.setArg(6, kDim * sizeof(float), NULL);
 
-	cl::NDRange global = cl::NDRange(nDim, 1);
-	cl::NDRange local = cl::NDRange(nDim / maxComputeUnits, 1);
+	cl::NDRange global = cl::NDRange(nDim);
+	cl::NDRange local = cl::NDRange(nDim / maxComputeUnits);
 	cl::Event clEvent;
 
 	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &clEvent);
