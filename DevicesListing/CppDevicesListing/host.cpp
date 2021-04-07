@@ -14,7 +14,7 @@ void printDeviceType(cl_device_type device_type)
 
     if (device_type == CL_DEVICE_TYPE_CUSTOM)
     {
-        std::cout << "CL_DEVICE_TYPE_CUSTOM" << std::endl;
+        std::cout << "CL_DEVICE_TYPE_CUSTOM\n";
         // We can safely return the function because
         // if device type is custom there are no other combinations.
         return;
@@ -73,16 +73,16 @@ int main()
 	vector<cl::Platform> platforms;
 	// Wraps clGetPlatformIDs()
 	cl::Platform::get(&platforms);
-	cout << "Number of available platforms: " << platforms.size() << endl;
+	cout << "Number of available platforms: " << platforms.size() << "\n";
 
-	cout << "Platform names:" << endl;
+	cout << "Platform names:" << "\n";
 	++indentation_level;
 	for (auto& platform : platforms)
 	{
         cout << "\n";
 		INDENT(indentation_level);
 		// Wrapper for clGetPlatformInfo()
-		cout << platform.getInfo<CL_PLATFORM_NAME>() << endl;
+		cout << platform.getInfo<CL_PLATFORM_NAME>() << "\n";
 
 		vector<cl::Device> devices;
 		// Wraps clGetDeviceIDs()
@@ -101,7 +101,7 @@ int main()
 #define OCLBASIC_PRINT_PROPERTY(NAME)   \
             {                               \
                 INDENT(indentation_level);  \
-                cout << "" << #NAME << ": " << device.getInfo<NAME>() << endl;     \
+                cout << "" << #NAME << ": " << device.getInfo<NAME>() << "\n";     \
             }
 
             OCLBASIC_PRINT_PROPERTY(CL_DEVICE_NAME);
