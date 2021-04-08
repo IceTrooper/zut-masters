@@ -29,7 +29,7 @@ Features of OpenCL shown in those examples:
 This project shows how to get all platforms/devices and their informations about OpenCL support. There is C++ and C version of the same project.
 
 ### Resources
-[Platform and Device Capabilities Viewer](https://software.intel.com/content/dam/develop/public/us/en/downloads/intel_ocl_caps_basic.zip)
+- [Platform and Device Capabilities Viewer](https://software.intel.com/content/dam/develop/public/us/en/downloads/intel_ocl_caps_basic.zip)
 
 ## SAXPY
 Computing equation of z=a*x+y known as SAXPY (Single precision AX Plus Y).
@@ -41,9 +41,9 @@ There are 4 versions of this program:
 4. C++ with kernel source inside file
 
 ### Resources
-"OpenCL Programming
+- "OpenCL Programming
 by Example" (p. 26)
-"OpenCL Akceleracja GPU w praktyce" (p. 111, 120)
+- "OpenCL Akceleracja GPU w praktyce" (p. 111, 120)
 
 ## SGEMM
 Example of matrices multiplication C (n x m) = A (n x k) * B (k x m) known as SGEMM operation.
@@ -58,8 +58,7 @@ There are 4 different kernel versions, from the most basic to the most optimized
 You can't pass pointer of pointers to kernel so you need to [reduce 2d matrix into 1d array of values](https://stackoverflow.com/questions/35442327/2d-array-as-opencl-kernel-argument).
 
 ### Resources
-"OpenCL
-Programming Guide" (p. 499-513)
+- "OpenCL Programming Guide" (p. 499-513)
 
 ## Hadamard Product
 The program computes Hadamard product showing how to use simple kernel chaining and events to synchronize between their calls.
@@ -69,18 +68,18 @@ There are 2 versions of this program:
 2. Out-of-order command queue with events to synchronize between kernel calls.
 
 ### Notes
-You can't use profiling events in Out Of Order command queue. In this example time is measured with chrono on host side.
-Some devices don't support OOQ. When you want to mimic out-of-order execution you need to make multiple command queues and synchronize operations between them.
+- You can't use profiling events in Out Of Order command queue. In this example time is measured with chrono on host side.
+- Some devices don't support OOQ. When you want to mimic out-of-order execution you need to make multiple command queues and synchronize operations between them.
 
 ### Resources
-[OpenCL: A Hands-on Introduction; Tim Mattson, Alice Koniges; .pdf presentation](https://www.nersc.gov/assets/pubs_presos/MattsonTutorialSC14.pdf)
-[A progression of OpenCL exercises; Tim Mattson](https://indico.cern.ch/event/138427/sessions/11396/attachments/116551/165426/OpenCL-exercises.pdf)
-[OpenCL™ Out-of-Order Queue on Intel® Processor Graphics ](https://software.intel.com/content/www/us/en/develop/articles/opencl-out-of-order-queue-on-intel-processor-graphics.html)
+- [OpenCL: A Hands-on Introduction; Tim Mattson, Alice Koniges; .pdf presentation](https://www.nersc.gov/assets/pubs_presos/MattsonTutorialSC14.pdf)
+- [A progression of OpenCL exercises; Tim Mattson](https://indico.cern.ch/event/138427/sessions/11396/attachments/116551/165426/OpenCL-exercises.pdf)
+- [OpenCL™ Out-of-Order Queue on Intel® Processor Graphics ](https://software.intel.com/content/www/us/en/develop/articles/opencl-out-of-order-queue-on-intel-processor-graphics.html)
 
 ## Parallelism
 
 ### Resources
-[The OpenCL Programming Book
+- [The OpenCL Programming Book
 FREE HTML version](https://us.fixstars.com/products/opencl/book/OpenCLProgrammingBook/calling-the-kernel/)
 
 ## Images
