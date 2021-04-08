@@ -135,7 +135,7 @@ int Program(int argc, char* argv[])
 	cl::Context context(CL_DEVICE_TYPE_GPU, contextProperties);
 	vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 	cl::Device device = devices[0];
-	cl::CommandQueue commandQueue(context, device, cl::QueueProperties::Profiling);
+	cl::CommandQueue commandQueue(context, device, cl::QueueProperties::OutOfOrder);
 
 	// Read source file
 	ifstream sourceFile("TaskParallel.cl");
@@ -181,6 +181,7 @@ int Program(int argc, char* argv[])
 		k.setArg(3, sizeof(cl_uint), &row_count);
 	}
 
+	auto tStart = chrono::high_resolution_clock::now();
 	for (auto k : kernels)
 	{
 		// commandQueue.enqueueTask is deprecated, use this instead:
@@ -188,6 +189,10 @@ int Program(int argc, char* argv[])
 	}
 
 	commandQueue.finish();
+	auto tEnd = chrono::high_resolution_clock::now();
+
+	auto ns_int = chrono::duration_cast<chrono::nanoseconds>(tEnd - tStart);
+	cout << "Time elapsed: " << ns_int.count() << " ns\n";
 
 	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeMat, (void*)C);
 

@@ -135,7 +135,7 @@ int Program(int argc, char* argv[])
 	cl::Context context(CL_DEVICE_TYPE_GPU, contextProperties);
 	vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
 	cl::Device device = devices[0];
-	cl::CommandQueue commandQueue(context, device, cl::QueueProperties::Profiling);
+	cl::CommandQueue commandQueue(context, device, cl::QueueProperties::None);
 
 	// Read source file
 	ifstream sourceFile("DataParallel.cl");
@@ -176,12 +176,14 @@ int Program(int argc, char* argv[])
 
 	cl::NDRange global(row_count);
 	cl::NDRange local(1);
-	cl::Event clEvent;
-	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, &clEvent);
-	commandQueue.finish();
-	//clEvent.wait();
 
-	Profile(clEvent);
+	auto tStart = chrono::high_resolution_clock::now();
+	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, NULL);
+	commandQueue.finish();
+	auto tEnd = chrono::high_resolution_clock::now();
+
+	auto ns_int = chrono::duration_cast<chrono::nanoseconds>(tEnd - tStart);
+	cout << "Time elapsed: " << ns_int.count() << " ns\n";
 
 	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeMat, (void*)C);
 

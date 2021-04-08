@@ -188,7 +188,9 @@
     <ClCompile Include="host.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Intel_OpenCL_Build_Rules Include="TaskParallel.cl" />
+    <Intel_OpenCL_Build_Rules Include="TaskParallel.cl">
+      <Device Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">1</Device>
+    </Intel_OpenCL_Build_Rules>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

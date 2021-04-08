@@ -77,6 +77,10 @@ There are 2 versions of this program:
 - [OpenCL™ Out-of-Order Queue on Intel® Processor Graphics ](https://software.intel.com/content/www/us/en/develop/articles/opencl-out-of-order-queue-on-intel-processor-graphics.html)
 
 ## Parallelism
+This example shows data and task based parallelism. Three simple operations on arrays (adding, substracting, multiplying) are defined in kernels. There is one kernel needed in data parallel example and 3 different kernels for each operation in task parallel example.
+
+### Notes
+- **cl::CommandQueue::enqueueTask** is equivalent to calling **cl::CommandQueue::enqueueNDRangeKernel** with *work_dim = 1, global = NULLRange, global[0] set to 1 and local[0] set to 1*; [reference](https://www.khronos.org/registry/OpenCL/specs/opencl-cplusplus-1.2.pdf)
 
 ### Resources
 - [The OpenCL Programming Book
@@ -89,6 +93,8 @@ FREE HTML version](https://us.fixstars.com/products/opencl/book/OpenCLProgrammin
 # Additional informations
 ## Useful resources
 [Intel Educational Resources](https://software.intel.com/content/www/us/en/develop/tools/opencl-sdk/training.html#codesamples)
+
+[OpenCL C++ Bindings Documentation](https://github.khronos.org/OpenCL-CLHPP/index.html)
 
 "OpenCL Akceleracja GPU w praktyce" Marek Sawerwain, 2014
 
