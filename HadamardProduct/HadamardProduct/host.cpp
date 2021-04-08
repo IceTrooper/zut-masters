@@ -16,9 +16,10 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <chrono>
 
 #define RAND_BASE 10
-#define LENGTH 2048
+#define LENGTH 409600
 #define VERBOSE false
 
 using namespace std;
@@ -109,22 +110,6 @@ void PrintVector(const float (&vec)[LENGTH])
 	cout << endl;
 }
 
-void Profile(cl::Event& clEvent)
-{
-	cl_ulong startTime = clEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
-	cl_ulong endTime = clEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
-	cl_ulong elapsed = endTime - startTime;
-	cout << "Time elapsed: " << elapsed << " ns\n";
-}
-
-void Profile(cl::Event& clStartEvent, cl::Event& clFinishEvent)
-{
-	cl_ulong startTime = clStartEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
-	cl_ulong endTime = clFinishEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
-	cl_ulong elapsed = endTime - startTime;
-	cout << "Time elapsed: " << elapsed << " ns\n";
-}
-
 void HadamardProductChain(cl::Device& device, cl::Context& context, cl::Program& program)
 {
 	cout << "\n\nHadamard product - chaining version:\n";
@@ -138,12 +123,10 @@ void HadamardProductChain(cl::Device& device, cl::Context& context, cl::Program&
 	cl::Buffer bufferE(context, CL_MEM_READ_WRITE, sizeVec);
 	cl::Buffer bufferF(context, CL_MEM_READ_WRITE, sizeVec);
 
-	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
-	cl::CommandQueue commandQueue(context, device, properties);
+	cl::CommandQueue commandQueue(context, device);
 
 	commandQueue.enqueueWriteBuffer(bufferA, true, 0, sizeVec, (void*)vecA);
 
-	//cl::Kernel kernel(program, "HadamardProduct");
 	cl::Kernel kernels[5]{
 		cl::Kernel(program, "HadamardProduct"),
 		cl::Kernel(program, "HadamardProduct"),
@@ -185,17 +168,102 @@ void HadamardProductChain(cl::Device& device, cl::Context& context, cl::Program&
 	cl::NDRange global(length);
 	cl::NDRange local = kernels[0].getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device);
 
-	cl::Event startEvent;
-	cl::Event finishEvent;
-	commandQueue.enqueueNDRangeKernel(kernels[0], cl::NullRange, global, local, NULL, &startEvent);
+	commandQueue.enqueueNDRangeKernel(kernels[0], cl::NullRange, global, local, NULL, NULL);
 	commandQueue.enqueueNDRangeKernel(kernels[1], cl::NullRange, global, local, NULL, NULL);
 	commandQueue.enqueueNDRangeKernel(kernels[2], cl::NullRange, global, local, NULL, NULL);
 	commandQueue.enqueueNDRangeKernel(kernels[3], cl::NullRange, global, local, NULL, NULL);
-	commandQueue.enqueueNDRangeKernel(kernels[4], cl::NullRange, global, local, NULL, &finishEvent);
+	commandQueue.enqueueNDRangeKernel(kernels[4], cl::NullRange, global, local, NULL, NULL);
 
 	commandQueue.finish();
 
-	Profile(startEvent, finishEvent);
+	// Reading results:
+	commandQueue.enqueueReadBuffer(bufferA, true, 0, sizeVec, (void*)vecA);
+	commandQueue.enqueueReadBuffer(bufferB, true, 0, sizeVec, (void*)vecB);
+	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeVec, (void*)vecC);
+	commandQueue.enqueueReadBuffer(bufferD, true, 0, sizeVec, (void*)vecD);
+	commandQueue.enqueueReadBuffer(bufferF, true, 0, sizeVec, (void*)vecF);
+	if (VERBOSE)
+	{
+		PrintVector(vecF);
+	}
+}
+
+void HadamardProductEvents(cl::Device& device, cl::Context& context, cl::Program& program)
+{
+	cout << "\n\nHadamard product - Out Of Order version:\n";
+
+	size_t sizeVec = sizeof(vecA);
+
+	cl::Buffer bufferA(context, CL_MEM_READ_WRITE, sizeVec);
+	cl::Buffer bufferB(context, CL_MEM_READ_WRITE, sizeVec);
+	cl::Buffer bufferC(context, CL_MEM_READ_WRITE, sizeVec);
+	cl::Buffer bufferD(context, CL_MEM_READ_WRITE, sizeVec);
+	cl::Buffer bufferE(context, CL_MEM_READ_WRITE, sizeVec);
+	cl::Buffer bufferF(context, CL_MEM_READ_WRITE, sizeVec);
+
+	cl::CommandQueue commandQueue(context, device, cl::QueueProperties::OutOfOrder);
+
+	commandQueue.enqueueWriteBuffer(bufferA, true, 0, sizeVec, (void*)vecA);
+
+	cl::Kernel kernels[5]{
+		cl::Kernel(program, "HadamardProduct"),
+		cl::Kernel(program, "HadamardProduct"),
+		cl::Kernel(program, "HadamardProduct"),
+		cl::Kernel(program, "HadamardProduct"),
+		cl::Kernel(program, "HadamardProduct")
+	};
+
+	// A * A = B
+	kernels[0].setArg(0, bufferA);
+	kernels[0].setArg(1, bufferA);
+	kernels[0].setArg(2, bufferB);
+	kernels[0].setArg(3, sizeof(cl_uint), &length);
+
+	// B * B = C
+	kernels[1].setArg(0, bufferB);
+	kernels[1].setArg(1, bufferB);
+	kernels[1].setArg(2, bufferC);
+	kernels[1].setArg(3, sizeof(cl_uint), &length);
+
+	// C * A = D
+	kernels[2].setArg(0, bufferC);
+	kernels[2].setArg(1, bufferA);
+	kernels[2].setArg(2, bufferD);
+	kernels[2].setArg(3, sizeof(cl_uint), &length);
+
+	// C * B = E
+	kernels[3].setArg(0, bufferC);
+	kernels[3].setArg(1, bufferB);
+	kernels[3].setArg(2, bufferE);
+	kernels[3].setArg(3, sizeof(cl_uint), &length);
+
+	// D * E = F
+	kernels[4].setArg(0, bufferD);
+	kernels[4].setArg(1, bufferE);
+	kernels[4].setArg(2, bufferF);
+	kernels[4].setArg(3, sizeof(cl_uint), &length);
+
+	cl::NDRange global(length);
+	cl::NDRange local = kernels[0].getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device);
+
+	cl::vector<cl::Event> blocker;
+	cl::vector<cl::Event> blockingEvents;
+
+	commandQueue.enqueueNDRangeKernel(kernels[0], cl::NullRange, global, local, NULL, NULL);
+	commandQueue.enqueueBarrierWithWaitList();
+	// OR pass a vector of events to wait in method.
+
+	blocker.push_back(cl::Event());
+	commandQueue.enqueueNDRangeKernel(kernels[1], cl::NullRange, global, local, NULL, &blocker[0]);
+
+	blockingEvents.push_back(cl::Event());
+	blockingEvents.push_back(cl::Event());
+	commandQueue.enqueueNDRangeKernel(kernels[2], cl::NullRange, global, local, &blocker, &blockingEvents[0]);
+	commandQueue.enqueueNDRangeKernel(kernels[3], cl::NullRange, global, local, &blocker, &blockingEvents[1]);
+
+	commandQueue.enqueueNDRangeKernel(kernels[4], cl::NullRange, global, local, &blockingEvents, NULL);
+
+	commandQueue.finish();
 
 	// Reading results:
 	commandQueue.enqueueReadBuffer(bufferA, true, 0, sizeVec, (void*)vecA);
@@ -243,21 +311,13 @@ int Program(int argc, char* argv[])
 		PrintVector(vecA);
 	}
 
+	auto tStart = chrono::high_resolution_clock::now();
 	HadamardProductChain(device, context, program);
+	//HadamardProductEvents(device, context, program);
+	auto tEnd = chrono::high_resolution_clock::now();
 
-
-	//// Main kernel program
-	////KernelSgemmNaive(program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
-	////KernelSgemmComputeUnits(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
-	////KernelSgemmPrivate(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
-	//KernelSgemmLocal(device, program, commandQueue, nDim, kDim, mDim, bufferA, bufferB, bufferC);
-
-	//// Read and check results
-	//commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeC, (void*)C);
-	//if (PRINT_MATRICES)
-	//{
-	//	PrintMatrix(C, nDim, mDim);
-	//}
+	auto ns_int = chrono::duration_cast<chrono::nanoseconds>(tEnd - tStart);
+	cout << "Time elapsed: " << ns_int.count() << " ns\n";
 
 	return 0;
 }
