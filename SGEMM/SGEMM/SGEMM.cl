@@ -74,7 +74,7 @@ __kernel void Sgemm_private(const uint nDim, const uint kDim, const uint mDim,
     }
 }
 
-// Copy entire row into private (fastest) work item memory.
+// Copy columns into local (faster) work group memory.
 __kernel void Sgemm_local(const uint nDim, const uint kDim, const uint mDim,
     const __global float* A,  const __global float* B, __global float* C,
     __local float* localB)
@@ -96,6 +96,7 @@ __kernel void Sgemm_local(const uint nDim, const uint kDim, const uint mDim,
             privateA[k] = A[i*kDim + k];
         }
         
+        // Copying from global to local memory.
         for(j = 0; j < mDim; j++)
         {
             for(k = localK; k < kDim; k+=localM)
@@ -104,12 +105,12 @@ __kernel void Sgemm_local(const uint nDim, const uint kDim, const uint mDim,
             }
         }
         
-
+        // Wait for all work items in group.
         barrier(CLK_LOCAL_MEM_FENCE);
         
         for(k = 0; k < kDim; k++)
         {
-            // Now we're getting A values from faster private memory.
+            // Now we're getting B values from faster local memory and A values from fastest private memory.
             acc += privateA[k] * localB[k];
         }
         
