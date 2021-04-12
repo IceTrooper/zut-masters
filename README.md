@@ -2,7 +2,7 @@
 Master's degree in Computer Science on The West Pomeranian University of Technology in Szczecin
 
 # Contents
-Repository contains code examples for master thesis about OpenCL.
+Repository contains code examples for master thesis about OpenCL on Intel GPU.
 
 List of examples:
 1. DeviceListing - print informations about OpenCL on devices.
@@ -68,7 +68,7 @@ There are 2 versions of this program:
 2. Out-of-order command queue with events to synchronize between kernel calls.
 
 ### Notes
-- You can't use profiling events in Out Of Order command queue. In this example time is measured with chrono on host side.
+- [You can't use profiling events](https://community.intel.com/t5/OpenCL-for-CPU/Out-of-Order-Queues-do-they-work-Enqueued-Barriers-with-Events/td-p/1182479) in Out Of Order command queue. In this example time is measured with chrono on host side. [Intel example](https://github.com/intel/compute-samples/tree/master/compute_samples/applications/commands_aggregation)
 - Some devices don't support OOQ. When you want to mimic out-of-order execution you need to make multiple command queues and synchronize operations between them.
 
 ### Resources
@@ -88,6 +88,9 @@ FREE HTML version](https://us.fixstars.com/products/opencl/book/OpenCLProgrammin
 
 ## Images
 
+### Notes
+- [When to use Images and Buffers](https://software.intel.com/content/www/us/en/develop/documentation/iocl-opg/top/check-list-for-opencl-optimizations/using-buffers-and-images-appropriately.html)
+
 ## PyOpenCL
 
 # Additional informations
@@ -95,6 +98,10 @@ FREE HTML version](https://us.fixstars.com/products/opencl/book/OpenCLProgrammin
 [Intel Educational Resources](https://software.intel.com/content/www/us/en/develop/tools/opencl-sdk/training.html#codesamples)
 
 [OpenCL C++ Bindings Documentation](https://github.khronos.org/OpenCL-CLHPP/index.html)
+
+[Optimization Techniques for Device (DSP) Code](https://downloads.ti.com/mctools/esd/docs/opencl/optimization/dsp_code.html)
+
+[Check-list for OpenCL Optimizations](https://software.intel.com/content/www/us/en/develop/documentation/iocl-opg/top/check-list-for-opencl-optimizations/mapping-memory-objects.html)
 
 "OpenCL Akceleracja GPU w praktyce" Marek Sawerwain, 2014
 
@@ -107,6 +114,15 @@ Koushik Bhattacharyya, 2013
 
 More ideas for parallel computing programs:
 Computing Pi number, Bitonic sort, Drawing gradient, Image filters (mean, median, gaussian, sobel)
+
+## Interesting facts
+- [Intel® Graphics device is much faster for floating-point add, sub, mul and so on in compare to the int type.](https://software.intel.com/content/www/us/en/develop/documentation/iocl-opg/top/check-list-for-opencl-optimizations/using-floating-point-for-calculations.html)
+- Out-of-Order; [Turning on profiling for a given command queue prevents concurrent execution](https://github.com/intel/compute-samples/tree/master/compute_samples/applications/commands_aggregation#limitations)
+- [OpenCL 2.0 allows a kernel to independently enqueue to the same device, without host interaction.](https://www.khronos.org/registry/OpenCL/sdk/2.0/docs/man/xhtml/enqueue_kernel.html)
+
+## Assets
+- intel.ppm - [Slejven Djurakovic; unsplash.com](https://unsplash.com/photos/0uXzoEzYZ4I)
+- colorful.ppm - [USGS; unsplash.com](https://unsplash.com/photos/vOQV-8SFwZk)
 
 ## Author
 [IceTrooper](https://github.com/IceTrooper/)
