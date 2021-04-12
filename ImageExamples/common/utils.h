@@ -1,13 +1,5 @@
 #pragma once
 
-#include <string>
+#include <CL/opencl.h>
 
-struct PPMImage {
-    std::string header;
-    int width, height;
-    int maxColor;
-    unsigned char* data;
-};
-
-std::istream& operator >>(std::istream& inputStream, PPMImage& other);
-std::ostream& operator <<(std::ostream& outputStream, const PPMImage& other);
+const char* OCL_GetErrorString(cl_int error);

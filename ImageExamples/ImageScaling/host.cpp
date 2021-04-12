@@ -10,11 +10,8 @@
 #include <chrono>
 #include "../common/utils.h"
 #include "../common/CImg.h"
-//#include "utils.h"
 
-#define RAND_BASE 10
-#define ROW_COUNT 1024
-#define VERBOSE false
+#define VERBOSE true
 
 using namespace std;
 using namespace cimg_library;
@@ -71,14 +68,20 @@ int Program(int argc, char* argv[])
 	const string filename = "imageScaling";
 	const string extension = ".ppm";
 
-	//PPMImage inputImage;
-	//PPMImage outputImage;
-	//ifstream inputFile(filename + extension);
-	//ofstream outputFile(filename + "Out" + extension);
+	const int destinationWidth = 800;
+	const int destinationHeight = 800;
+	const float widthNormFactor = 1.0f / destinationWidth;
+	const float heightNormFactor = 1.0f / destinationHeight;
 
-	//inputFile >> inputImage;
-	//inputFile.close();
 	CImg<unsigned char> inputImage((filename + extension).c_str());
+	CImgDisplay inputDisplay(inputImage, "Input image");
+	const int imageWidth = inputImage.width();
+	const int imageHeight = inputImage.height();
+	// Add alpha channel to PPM image, because OpenCL can't use CL_RGB with CL_UNSIGNED_INT8
+	// https://stackoverflow.com/questions/32238522/set-default-value-for-alpha-in-cimg
+	inputImage.channels(0, 3);
+	inputImage.get_shared_channel(3).fill(255);
+	inputImage.permute_axes("cxyz");
 
 	cl::Platform platform = FindOpenCLPlatform();
 
@@ -98,36 +101,49 @@ int Program(int argc, char* argv[])
 	// Build binary version of program.
 	program.build(device);
 
-	//cout << inputImage.data[0] << "\n";
-
 	cout << "\n\nImage scaling\n";
 
-	cl::ImageFormat imageFormat(CL_RGB, CL_UNSIGNED_INT8);
-	cl::Image2D clImageIn(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, imageFormat, inputImage.width(), inputImage.height(), 0, (void*)inputImage.data());
-	//cl::Image2D clImageOut(context, CL_MEM_WRITE_ONLY, imageFormat, inputImage.width, inputImage.height, 0, (void*)inputImage.ptr);
+	cl::ImageFormat imageFormat(CL_RGBA, CL_UNSIGNED_INT8);
+	cl::Image2D clImageIn(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, imageFormat, imageWidth, imageHeight, 0, (void*)inputImage.data(), NULL);
+	cl::Image2D clImageOut(context, CL_MEM_WRITE_ONLY, imageFormat, destinationWidth, destinationHeight, 0, NULL, NULL);
 
-	//cl::Kernel kernel(program, "ImageScaling");
+	cl::Kernel kernel(program, "ImageScaling");
 
-	//kernel.setArg(0, clImageIn);
-	//kernel.setArg(1, clImageOut);
-	//kernel.setArg(2, 2.0f);
-	//kernel.setArg(3, 2.0f);
+	kernel.setArg(0, clImageIn);
+	kernel.setArg(1, clImageOut);
+	kernel.setArg(2, widthNormFactor);
+	kernel.setArg(3, heightNormFactor);
 
-	//cl::NDRange global(inputImage.height, inputImage.width);
+	cl::NDRange global(destinationWidth, destinationHeight);
 
-	//cl::Event clEvent;
-	//commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, cl::NullRange, NULL, &clEvent);
-	//commandQueue.finish();
+	cl::Event clEvent;
+	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, cl::NullRange, NULL, &clEvent);
+	commandQueue.finish();
 
-	//Profile(clEvent);
+	Profile(clEvent);
 
-	//size_t origin[3] = { 0, 0, 0 };
-	//size_t region[3] = { inputImage.width, inputImage.height, 1 };
+	array<size_t, 3> origin = { 0, 0, 0 };
+	array<size_t, 3> region = { destinationWidth, destinationHeight, 1 };
 
-	//commandQueue.enqueueReadImage(clImageOut, CL_TRUE, origin, region, 0, 0, (void*)outputImage.ptr);
+	// Reading image
+	CImg<unsigned char> outputImage(destinationWidth, destinationHeight, 1, 4);
+	outputImage.permute_axes("cxyz");
 
-	//outputFile << outputImage;
-	//outputFile.close();
+	commandQueue.enqueueReadImage(clImageOut, CL_TRUE, origin, region, 0, 0, (void*)outputImage.data());
+
+	outputImage.permute_axes("yzcx");
+	outputImage.channels(0, 2);
+	outputImage.save((filename + "Out" + extension).c_str());
+
+	// Show images
+	if (VERBOSE)
+	{
+		CImgDisplay outputDisplay(outputImage, "Output image");
+		while (!inputDisplay.is_closed() && !outputDisplay.is_closed())
+		{
+			inputDisplay.wait();
+		}
+	}
 
 	return 0;
 }
@@ -140,7 +156,7 @@ int main(int argc, char* argv[])
 	}
 	catch (cl::Error e)
 	{
-		cout << "Returned code (" << e.err() << "): " << e.what() << "\n";
+		cout << "Returned code (" << e.err() << ": " << OCL_GetErrorString(e.err()) << "): " << e.what() << "\n";
 		return e.err();
 	}
 	catch (const exception& e)
