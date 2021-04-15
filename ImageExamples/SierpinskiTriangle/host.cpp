@@ -70,7 +70,7 @@ int Program(int argc, char* argv[])
 
 	try
 	{
-		const cl_uint maxLevel = 12;
+		const cl_uint maxLevel = 10;
 		const cl_uint imageSize = 1024;
 
 		CImg<unsigned char> outputImage(imageSize, imageSize, 1, 4);
@@ -85,10 +85,13 @@ int Program(int argc, char* argv[])
 		cl::CommandQueue commandQueue(context, device, cl::QueueProperties::Profiling);
 
 		cl_int err = CL_SUCCESS;
+		// Use this:
 		//cl_command_queue_properties props = CL_QUEUE_ON_DEVICE_DEFAULT;
 		//cl::DeviceCommandQueue deviceCommandQueue(context, device, (cl::DeviceQueueProperties)props, &err);
-		cl::DeviceCommandQueue deviceCommandQueue(context, device, (cl::DeviceQueueProperties)CL_QUEUE_ON_DEVICE_DEFAULT, &err);
-		cout << err << "\n";
+		// or this:
+		// Device side queue - 16MB
+		cl::DeviceCommandQueue deviceCommandQueue(context, device, (cl_uint)(16 * 1024 * 1024), (cl::DeviceQueueProperties)CL_QUEUE_ON_DEVICE_DEFAULT, &err);
+		cout << "DeviceCommandQueue return status: " << err << "\n";
 
 		// Read source file
 		ifstream sourceFile("SierpinskiTriangle.cl");
@@ -98,7 +101,7 @@ int Program(int argc, char* argv[])
 		cl::Program::Sources source{ kernelSource };
 		program = cl::Program(context, source);
 		// Build binary version of program.
-		program.build(device);
+		program.build(device, "-cl-std=CL2.0");
 
 		cout << "\n\nSierpinski Triangle:\n";
 
@@ -132,7 +135,7 @@ int Program(int argc, char* argv[])
 
 		outputImage.permute_axes("yzcx");
 		outputImage.channels(0, 2);
-		outputImage.save("sierpinskiTriangle.ppm", imageSize);
+		outputImage.save(("sierpinskiTriangle-" + to_string(imageSize) + ".ppm").c_str());
 
 		// Show images
 		if (VERBOSE)
