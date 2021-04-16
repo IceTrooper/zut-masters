@@ -43,7 +43,7 @@ __kernel void Sgemm_compute_units(const uint nDim, const uint kDim, const uint m
     }
 }
 
-// Copy entire row into private (fastest) work item memory.
+// Copy entire row of A into private (fastest) work item memory.
 __kernel void Sgemm_private(const uint nDim, const uint kDim, const uint mDim,
     const __global float* A,  const __global float* B, __global float* C)
 {
@@ -74,14 +74,14 @@ __kernel void Sgemm_private(const uint nDim, const uint kDim, const uint mDim,
     }
 }
 
-// Copy columns into local (faster) work group memory.
+// Copy columns of B into local (faster) work group memory.
 __kernel void Sgemm_local(const uint nDim, const uint kDim, const uint mDim,
     const __global float* A,  const __global float* B, __global float* C,
     __local float* localB)
 {
     int i = get_global_id(0);
     int k, j;
-    float acc = 0.0f;
+    float acc;
 
     float privateA[K_DIM];
 
@@ -96,24 +96,25 @@ __kernel void Sgemm_local(const uint nDim, const uint kDim, const uint mDim,
             privateA[k] = A[i*kDim + k];
         }
         
-        // Copying from global to local memory.
         for(j = 0; j < mDim; j++)
         {
+            // Copying from global to local memory.
             for(k = localK; k < kDim; k+=localM)
             {
-                localB[k] = B[k * kDim + j];
+                localB[k] = B[k * mDim + j];
             }
+        
+            // Wait for all work items in group.
+            barrier(CLK_LOCAL_MEM_FENCE);
+
+            acc = 0.0f;        
+            for(k = 0; k < kDim; k++)
+            {
+                // Now we're getting B values from faster local memory and A values from fastest private memory.
+                acc += privateA[k] * localB[k];
+            }
+        
+            C[i*mDim + j] = acc;
         }
-        
-        // Wait for all work items in group.
-        barrier(CLK_LOCAL_MEM_FENCE);
-        
-        for(k = 0; k < kDim; k++)
-        {
-            // Now we're getting B values from faster local memory and A values from fastest private memory.
-            acc += privateA[k] * localB[k];
-        }
-        
-        C[i*mDim + j] = acc;
     }
 }

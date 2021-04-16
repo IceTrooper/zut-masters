@@ -265,7 +265,7 @@ int Program(int argc, char* argv[])
 	FillEmpty(C, nDim, mDim);
 
 	// Printing matrices to test out.
-	if (PRINT_MATRICES)
+	if (VERBOSE)
 	{
 		PrintMatrix(A, nDim, kDim);
 		PrintMatrix(B, kDim, mDim);
@@ -313,7 +313,7 @@ int Program(int argc, char* argv[])
 
 	// Read and check results
 	commandQueue.enqueueReadBuffer(bufferC, true, 0, sizeC, (void*)C);
-	if (PRINT_MATRICES)
+	if (VERBOSE)
 	{
 		PrintMatrix(C, nDim, mDim);
 	}
