@@ -43,8 +43,3 @@ __kernel void Sgemm(const uint nDim, const uint kDim, const uint mDim,
         }
     }
 }
-
-__kernel void Printing(const uint nDim)
-{
-    printf("%s", "halko");
-}
