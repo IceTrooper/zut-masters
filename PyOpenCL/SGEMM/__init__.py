@@ -23,10 +23,6 @@ def find_opencl_platform(name):
 
 def ordered_numpy_array(n, m, start, step):
 	return np.arange(start, start + n * m * step, step, dtype=np.float32).reshape(n, m)
-	# result = []
-	# for i in range(n):
-	# 	result.append(np.arange(m * i + step * i, m * (i + 1) + step * i, step))
-	# return np.array(result, dtype=np.float32)
 
 def profile(ev):
 	print(f'Time elapsed: {ev.profile.end-ev.profile.start} ns')
