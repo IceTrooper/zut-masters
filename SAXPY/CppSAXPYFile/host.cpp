@@ -41,7 +41,7 @@ cl::Platform FindOpenCLPlatform()
 		if (devices.size() != 0)
 		{
 			cout << "Required device was found.\n";
-			cout << "Number of available devices: " << devices.size();
+			cout << "Number of available devices: " << devices.size() << "\n";
 
 			return platform;
 		}
@@ -72,6 +72,14 @@ void FillEmpty(cl_float* floatArray, cl_uint n)
 	{
 		floatArray[i] = 0.0f;
 	}
+}
+
+void Profile(cl::Event& clEvent)
+{
+	cl_ulong startTime = clEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+	cl_ulong endTime = clEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+	cl_ulong elapsed = endTime - startTime;
+	cout << "Time elapsed: " << elapsed << " ns\n";
 }
 
 int Program(int argc, char* argv[])
@@ -121,9 +129,11 @@ int Program(int argc, char* argv[])
 	kernel.setArg(3, deviceOutZ);
 	kernel.setArg(4, sizeof(int), &N);
 
-	cl::Event event;
-	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(N, 1), cl::NullRange, NULL, &event);
-	event.wait();
+	cl::Event clEvent;
+	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(N, 1), cl::NullRange, NULL, &clEvent);
+	clEvent.wait();
+
+	Profile(clEvent);
 
 	commandQueue.enqueueReadBuffer(deviceOutZ, true, 0, nBytes, (void*)hostOutZ);
 	for (int i = 0; i < N; i++)
