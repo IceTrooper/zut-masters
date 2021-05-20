@@ -84,6 +84,17 @@ int main()
 		// Wrapper for clGetPlatformInfo()
 		cout << platform.getInfo<CL_PLATFORM_NAME>() << "\n";
 
+        ++indentation_level;
+        INDENT(indentation_level);
+        cout << platform.getInfo<CL_PLATFORM_VENDOR>() << "\n";
+
+        INDENT(indentation_level);
+        cout << platform.getInfo<CL_PLATFORM_VERSION>() << "\n";
+
+        INDENT(indentation_level);
+        cout << platform.getInfo<CL_PLATFORM_PROFILE>() << "\n";
+        --indentation_level;
+
 		vector<cl::Device> devices;
 		// Wraps clGetDeviceIDs()
 		platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
@@ -106,7 +117,7 @@ int main()
 
             OCLBASIC_PRINT_PROPERTY(CL_DEVICE_NAME);
             INDENT(indentation_level);
-            printDeviceType(device.getInfo< CL_DEVICE_TYPE>());
+            printDeviceType(device.getInfo<CL_DEVICE_TYPE>());
             OCLBASIC_PRINT_PROPERTY(CL_DEVICE_AVAILABLE);
             OCLBASIC_PRINT_PROPERTY(CL_DEVICE_VENDOR);
             OCLBASIC_PRINT_PROPERTY(CL_DEVICE_PROFILE);
