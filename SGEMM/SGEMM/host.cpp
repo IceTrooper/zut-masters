@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <chrono>
 #include "host.h"
 
 using namespace std;
@@ -279,8 +280,14 @@ int Program(int argc, char* argv[])
 		//FillEmpty(hostC, nDim, mDim);
 		std::memcpy(hostC, C, sizeC);
 		cout << "Naive host matrix multiplication:\n";
+		auto tStart = chrono::high_resolution_clock::now();
 		SgemmNaive(nDim, mDim, kDim, A, B, hostC);
-		PrintMatrix(hostC, nDim, mDim);
+		auto tEnd = chrono::high_resolution_clock::now();
+
+		auto ns_int = chrono::duration_cast<chrono::nanoseconds>(tEnd - tStart);
+		cout << "Naive time elapsed: " << ns_int.count() << " ns\n";
+
+		if (VERBOSE) PrintMatrix(hostC, nDim, mDim);
 	}
 
 	cout << "Kernel matrix multiplication:\n";

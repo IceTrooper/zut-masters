@@ -31,7 +31,7 @@ __kernel void Sgemm_compute_units(const uint nDim, const uint kDim, const uint m
 
     if(i < nDim)
     {
-        for(j=0; j<mDim; j++)
+        for(j = 0; j <mDim; j++)
         {
             acc = 0.0f;
             for(k = 0; k < kDim; k++)
@@ -61,7 +61,7 @@ __kernel void Sgemm_private(const uint nDim, const uint kDim, const uint mDim,
             privateA[k] = A[i*kDim + k];
         }
 
-        for(j=0; j<mDim; j++)
+        for(j = 0; j < mDim; j++)
         {
             acc = 0.0f;
             for(k = 0; k < kDim; k++)
