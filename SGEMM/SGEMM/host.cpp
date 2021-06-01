@@ -202,7 +202,6 @@ void KernelSgemmPrivate(cl::Device& device, cl::Program& program, cl::CommandQue
 	kernel.setArg(3, bufferA);
 	kernel.setArg(4, bufferB);
 	kernel.setArg(5, bufferC);
-	cout << kernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device) << "\n";
 
 	cout << "CL_DEVICE_MAX_WORK_GROUP_SIZE: " << device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << "\n";
 	cout << "CL_KERNEL_WORK_GROUP_SIZE: " << kernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device) << "\n";
