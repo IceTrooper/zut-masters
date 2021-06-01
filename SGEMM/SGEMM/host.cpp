@@ -167,6 +167,10 @@ void KernelSgemmComputeUnits(cl::Device& device, cl::Program& program, cl::Comma
 	kernel.setArg(3, bufferA);
 	kernel.setArg(4, bufferB);
 	kernel.setArg(5, bufferC);
+	cout << kernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device) << "\n";
+
+	cout << "CL_DEVICE_MAX_WORK_GROUP_SIZE: " << device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << "\n";
+	cout << "CL_KERNEL_WORK_GROUP_SIZE: " << kernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device) << "\n";
 
 	cl::NDRange global = cl::NDRange(nDim);
 	cl::NDRange local = cl::NDRange(nDim/maxComputeUnits);
@@ -198,6 +202,10 @@ void KernelSgemmPrivate(cl::Device& device, cl::Program& program, cl::CommandQue
 	kernel.setArg(3, bufferA);
 	kernel.setArg(4, bufferB);
 	kernel.setArg(5, bufferC);
+	cout << kernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device) << "\n";
+
+	cout << "CL_DEVICE_MAX_WORK_GROUP_SIZE: " << device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << "\n";
+	cout << "CL_KERNEL_WORK_GROUP_SIZE: " << kernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device) << "\n";
 
 	cl::NDRange global = cl::NDRange(nDim);
 	cl::NDRange local = cl::NDRange(nDim / maxComputeUnits);
@@ -230,6 +238,9 @@ void KernelSgemmLocal(cl::Device& device, cl::Program& program, cl::CommandQueue
 	kernel.setArg(5, bufferC);
 	kernel.setArg(6, kDim * sizeof(float), NULL);
 
+	cout << "CL_DEVICE_MAX_WORK_GROUP_SIZE: " << device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << "\n";
+	cout << "CL_KERNEL_WORK_GROUP_SIZE: " << kernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device) << "\n";
+
 	cl::NDRange global = cl::NDRange(nDim);
 	cl::NDRange local = cl::NDRange(nDim / maxComputeUnits);
 	cl::Event clEvent;
@@ -254,6 +265,8 @@ int Program(int argc, char* argv[])
 	const cl_uint kDim = K_DIM;
 	const cl_uint mDim = M_DIM;
 
+	cout << "N: " << nDim << ", K: " << kDim << ", M: " << mDim << "\n";
+
 	cl_float* A = new cl_float[nDim * kDim];
 	cl_float* B = new cl_float[kDim * mDim];
 	cl_float* C = new cl_float[nDim * mDim];
@@ -261,22 +274,23 @@ int Program(int argc, char* argv[])
 	size_t sizeB = kDim * mDim * sizeof(float);
 	size_t sizeC = nDim * mDim * sizeof(float);
 
-	FillOrdered(A, nDim, kDim, 1.0f, 1.0f);
-	FillOrdered(B, kDim, mDim, 2.0f, 2.0f);
+	FillOrdered(A, nDim, kDim, 0.00001f, 0.00001f);
+	FillOrdered(B, kDim, mDim, 0.00002f, 0.00002f);
 	FillEmpty(C, nDim, mDim);
 
 	// Printing matrices to test out.
 	if (VERBOSE)
 	{
-		PrintMatrix(A, nDim, kDim);
-		PrintMatrix(B, kDim, mDim);
+		//PrintMatrix(A, nDim, kDim);
+		//PrintMatrix(B, kDim, mDim);
 		PrintMatrix(C, nDim, mDim);
 	}
 
+	cl_float* hostC;
 	// Host multiplication
 	if (COMPUTE_HOST)
 	{
-		cl_float* hostC = new cl_float[nDim * mDim];
+		hostC = new cl_float[nDim * mDim];
 		//FillEmpty(hostC, nDim, mDim);
 		std::memcpy(hostC, C, sizeC);
 		cout << "Naive host matrix multiplication:\n";
@@ -323,6 +337,23 @@ int Program(int argc, char* argv[])
 	if (VERBOSE)
 	{
 		PrintMatrix(C, nDim, mDim);
+	}
+
+	if (COMPUTE_HOST)
+	{
+		bool isEqual = true;
+		for (size_t i = 0; i < nDim * mDim; i++)
+		{
+			if (abs(hostC[i] - C[i]) > 100.0f)
+			{
+				isEqual = false;
+				cout << "Different value on index: " << i << "\n";
+				cout << "Difference: " << abs(hostC[i] - C[i]) << "\n";
+				cout << hostC[i] << " != " << C[i] << "\n";
+				break;
+			}
+		}
+		cout << "Equality: " << boolalpha << isEqual << "\n";
 	}
 
 	delete[] A;
