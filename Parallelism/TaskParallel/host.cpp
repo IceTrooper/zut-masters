@@ -187,10 +187,9 @@ int Program(int argc, char* argv[])
 		// commandQueue.enqueueTask is deprecated, use this instead:
 		commandQueue.enqueueNDRangeKernel(k, cl::NullRange, cl::NDRange(1), cl::NDRange(1), NULL, NULL);
 	}
-
 	commandQueue.finish();
-	auto tEnd = chrono::high_resolution_clock::now();
 
+	auto tEnd = chrono::high_resolution_clock::now();
 	auto ns_int = chrono::duration_cast<chrono::nanoseconds>(tEnd - tStart);
 	cout << "Time elapsed: " << ns_int.count() << " ns\n";
 

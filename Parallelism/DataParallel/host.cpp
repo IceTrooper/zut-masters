@@ -149,7 +149,7 @@ int Program(int argc, char* argv[])
 
 	cout << "\n\nParallelism - Data parallel example\n";
 
-	FillOrdered(A, row_count, col_count, 1.0f, 1.0f);
+	FillOrdered(A, row_count, col_count, 0.001f, 0.001f);
 	FillRandom(B, row_count, col_count, true);
 	FillEmpty(C, row_count, col_count);
 	if (VERBOSE)
@@ -175,10 +175,9 @@ int Program(int argc, char* argv[])
 	kernel.setArg(3, sizeof(cl_uint), &row_count);
 
 	cl::NDRange global(row_count);
-	cl::NDRange local(1);
 
 	auto tStart = chrono::high_resolution_clock::now();
-	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local, NULL, NULL);
+	commandQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, cl::NullRange, NULL, NULL);
 	commandQueue.finish();
 	auto tEnd = chrono::high_resolution_clock::now();
 
