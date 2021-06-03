@@ -19,7 +19,7 @@
 #include <chrono>
 
 #define RAND_BASE 10
-#define LENGTH 409600
+#define LENGTH 819200
 #define VERBOSE false
 
 using namespace std;
@@ -168,6 +168,7 @@ void HadamardProductChain(cl::Device& device, cl::Context& context, cl::Program&
 	cl::NDRange global(length);
 	cl::NDRange local = kernels[0].getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device);
 
+	auto tStart = chrono::high_resolution_clock::now();
 	commandQueue.enqueueNDRangeKernel(kernels[0], cl::NullRange, global, local, NULL, NULL);
 	commandQueue.enqueueNDRangeKernel(kernels[1], cl::NullRange, global, local, NULL, NULL);
 	commandQueue.enqueueNDRangeKernel(kernels[2], cl::NullRange, global, local, NULL, NULL);
@@ -175,6 +176,9 @@ void HadamardProductChain(cl::Device& device, cl::Context& context, cl::Program&
 	commandQueue.enqueueNDRangeKernel(kernels[4], cl::NullRange, global, local, NULL, NULL);
 
 	commandQueue.finish();
+	auto tEnd = chrono::high_resolution_clock::now();
+	auto ns_int = chrono::duration_cast<chrono::nanoseconds>(tEnd - tStart);
+	cout << "Time elapsed: " << ns_int.count() << " ns\n";
 
 	// Reading results:
 	commandQueue.enqueueReadBuffer(bufferA, true, 0, sizeVec, (void*)vecA);
@@ -249,6 +253,7 @@ void HadamardProductEvents(cl::Device& device, cl::Context& context, cl::Program
 	cl::vector<cl::Event> blocker;
 	cl::vector<cl::Event> blockingEvents;
 
+	auto tStart = chrono::high_resolution_clock::now();
 	commandQueue.enqueueNDRangeKernel(kernels[0], cl::NullRange, global, local, NULL, NULL);
 	commandQueue.enqueueBarrierWithWaitList();
 	// OR pass a vector of events to wait in method.
@@ -264,6 +269,9 @@ void HadamardProductEvents(cl::Device& device, cl::Context& context, cl::Program
 	commandQueue.enqueueNDRangeKernel(kernels[4], cl::NullRange, global, local, &blockingEvents, NULL);
 
 	commandQueue.finish();
+	auto tEnd = chrono::high_resolution_clock::now();
+	auto ns_int = chrono::duration_cast<chrono::nanoseconds>(tEnd - tStart);
+	cout << "Time elapsed: " << ns_int.count() << " ns\n";
 
 	// Reading results:
 	commandQueue.enqueueReadBuffer(bufferA, true, 0, sizeVec, (void*)vecA);
@@ -311,13 +319,8 @@ int Program(int argc, char* argv[])
 		PrintVector(vecA);
 	}
 
-	auto tStart = chrono::high_resolution_clock::now();
-	HadamardProductChain(device, context, program);
-	//HadamardProductEvents(device, context, program);
-	auto tEnd = chrono::high_resolution_clock::now();
-
-	auto ns_int = chrono::duration_cast<chrono::nanoseconds>(tEnd - tStart);
-	cout << "Time elapsed: " << ns_int.count() << " ns\n";
+	//HadamardProductChain(device, context, program);
+	HadamardProductEvents(device, context, program);
 
 	return 0;
 }
