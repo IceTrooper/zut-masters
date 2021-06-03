@@ -149,7 +149,7 @@ int Program(int argc, char* argv[])
 
 	cout << "\n\nParallelism - Task parallel example\n";
 
-	FillOrdered(A, row_count, col_count, 1.0f, 1.0f);
+	FillOrdered(A, row_count, col_count, 0.001f, 0.001f);
 	FillRandom(B, row_count, col_count, true);
 	FillEmpty(C, row_count, col_count);
 	if (VERBOSE)
