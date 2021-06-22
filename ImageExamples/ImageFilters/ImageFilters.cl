@@ -1,4 +1,4 @@
-const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
+const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
 __kernel void Filter(__read_only image2d_t sourceImage, __write_only image2d_t destinationImage,
                             __constant float* filter, int windowSize)
 {

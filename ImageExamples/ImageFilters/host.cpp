@@ -82,11 +82,11 @@ int Program(int argc, char* argv[])
 	};
 
 	float blurMask[25] = {
-		0.0, 1.0, 2.0, 1.0, 0.0,
-		1.0, 4.0, 8.0, 4.0, 1.0,
-		2.0, 8.0, 16.0, 8.0, 2.0,
-		1.0, 4.0, 8.0, 4.0, 1.0,
-		0.0, 1.0, 2.0, 1.0, 0.0,
+		1.0, 4.0, 6.0, 4.0, 1.0,
+		4.0, 16.0, 24.0, 16.0, 4.0,
+		6.0, 24.0, 36.0, 24.0, 6.0,
+		4.0, 16.0, 24.0, 16.0, 4.0,
+		1.0, 4.0, 6.0, 4.0, 1.0,
 	};
 
 	CImg<unsigned char> inputImage((filename + extension).c_str());
@@ -126,11 +126,11 @@ int Program(int argc, char* argv[])
 	cl::Image2D clImageIn(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, imageFormat, imageWidth, imageHeight, 0, (void*)inputImage.data(), NULL);
 	cl::Image2D clImageOut(context, CL_MEM_WRITE_ONLY, imageFormat, imageWidth, imageHeight, 0, NULL, NULL);
 
-	cl::Buffer clBufferFilter(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * 9, (void*)sharpenMask, NULL);
+	cl::Buffer clBufferFilter(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * 25, (void*)blurMask, NULL);
 
 	cl::Kernel kernel(program, "Filter");
 
-	cl_uint maskSize = 3;
+	cl_uint maskSize = 5;
 	kernel.setArg(0, clImageIn);
 	kernel.setArg(1, clImageOut);
 	kernel.setArg(2, clBufferFilter);

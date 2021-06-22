@@ -12,7 +12,6 @@ def find_opencl_platform(name):
 		if(p_name.find(name) == -1):
 			# Not found
 			continue
-
 		devices = p.get_devices(cl.device_type.GPU)
 		if(len(devices) > 0):
 			print('Required device was found')
@@ -25,7 +24,7 @@ def ordered_numpy_array(n, m, start, step):
 	return np.arange(start, start + n * m * step, step, dtype=np.float32).reshape(n, m)
 
 def profile(ev):
-	print(f'Time elapsed: {ev.profile.end-ev.profile.start} ns')
+	print(f'Time elapsed: {ev.profile.end - ev.profile.start} ns')
 
 def main():
 	platform = find_opencl_platform('Intel')
@@ -35,11 +34,11 @@ def main():
 	device = devices[0]
 
 	# This should be the same value as in sgemm.cl kernel code. Be aware of that!
-	kDim = 2400
-	nDim, mDim = 1200, 4800
+	kDim = 1200
+	nDim, mDim = 4800, 3600
 
-	A = ordered_numpy_array(nDim, kDim, 1.0, 1.0)
-	B = ordered_numpy_array(kDim, mDim, 2.0, 2.0)
+	A = ordered_numpy_array(nDim, kDim, 0.00001, 0.00001)
+	B = ordered_numpy_array(kDim, mDim, 0.00002, 0.00002)
 	# B = np.random.rand(kDim, mDim).astype(np.float32)
 	C = np.zeros((nDim, mDim), dtype=np.float32)
 

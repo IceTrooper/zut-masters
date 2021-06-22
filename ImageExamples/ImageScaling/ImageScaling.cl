@@ -1,5 +1,5 @@
 // https://software.intel.com/content/www/us/en/develop/articles/quick-getting-started-guide-for-intel-opencl-sdk-integration-in-intel-system-studio-2019.html
-const sampler_t sampler = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_CLAMP | CLK_FILTER_LINEAR;
+const sampler_t sampler = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_LINEAR;
 __kernel void ImageScaling(__read_only image2d_t sourceImage, __write_only image2d_t destinationImage,
                             const float widthNormScalar, const float heightNormScalar)
 {

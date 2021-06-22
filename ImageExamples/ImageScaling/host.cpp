@@ -68,8 +68,8 @@ int Program(int argc, char* argv[])
 	const string filename = "imageScaling";
 	const string extension = ".ppm";
 
-	const int destinationWidth = 800;
-	const int destinationHeight = 800;
+	const int destinationWidth = 900;
+	const int destinationHeight = 300;
 	const float widthNormFactor = 1.0f / destinationWidth;
 	const float heightNormFactor = 1.0f / destinationHeight;
 

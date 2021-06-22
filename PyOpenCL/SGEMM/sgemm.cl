@@ -8,7 +8,7 @@ __kernel void Sgemm(const uint nDim, const uint kDim, const uint mDim,
     float acc;
 
     // This should be the same size value as kDim
-    float privateA[2400];
+    float privateA[1200];
 
     int localK = get_local_id(0);
     int localM = get_local_size(0);
